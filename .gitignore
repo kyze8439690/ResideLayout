@@ -1,0 +1,8 @@
+.gradle/*
+.idea/*
+gradle/*
+gradlew*
+ResideLayout.iml
+build/*
+gradle.properties
+local.properties
