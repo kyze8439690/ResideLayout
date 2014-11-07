@@ -18,6 +18,8 @@ If you are finding some similar library on iOS, please visit [https://github.com
 
 [Apk file link](https://github.com/kyze8439690/ResideLayout/blob/master/demo.apk?raw=true)
 
+[Google Play link](https://play.google.com/store/apps/details?id=me.yugy.github.residelayout)
+
 [Demo Video](http://youtu.be/Kv8wK2FRC7M)
 
 
