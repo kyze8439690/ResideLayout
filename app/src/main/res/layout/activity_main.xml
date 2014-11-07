@@ -9,10 +9,24 @@
         android:src="@drawable/stars"
         android:scaleType="centerCrop"/>
 
-    <ImageView
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:src="@drawable/balloon"
-        android:scaleType="centerCrop"/>
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/balloon"/>
+
+        <android.support.v4.view.ViewPager
+            android:id="@+id/pager"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_margin="32dp"
+            android:layout_centerInParent="true"
+            />
+
+    </RelativeLayout>
 
 </me.yugy.github.residelayout.ResideLayout>

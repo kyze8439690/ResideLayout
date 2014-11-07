@@ -32,6 +32,7 @@ import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.ViewCompat;
+import android.support.v4.view.ViewPager;
 import android.support.v4.widget.ViewDragHelper;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -128,8 +129,6 @@ public class ResideLayout extends ViewGroup {
      */
     private boolean mPreservedOpenState;
     private boolean mFirstLayout = true;
-
-    private final Rect mTmpRect = new Rect();
 
     private final ArrayList<DisableLayerRunnable> mPostedRunnables =
             new ArrayList<DisableLayerRunnable>();
@@ -323,10 +322,6 @@ public class ResideLayout extends ViewGroup {
 
         if (widthMode != MeasureSpec.EXACTLY) {
             if (isInEditMode()) {
-                // Don't crash the layout editor. Consume all of the space if specified
-                // or pick a magic number from thin air otherwise.
-                // TODO Better communication with tools of this bogus state.
-                // It will crash on a real device.
                 if (widthMode == MeasureSpec.UNSPECIFIED) {
                     widthSize = 300;
                 }
@@ -426,7 +421,6 @@ public class ResideLayout extends ViewGroup {
         // Resolve weight and make sure non-sliding panels are smaller than the full screen.
         if (canSlide || weightSum > 0) {
 //            final int fixedPanelWidthLimit = widthAvailable - mOverhangSize;
-            final int fixedPanelWidthLimit = widthAvailable;
 
             for (int i = 0; i < childCount; i++) {
                 final View child = getChildAt(i);
@@ -444,7 +438,7 @@ public class ResideLayout extends ViewGroup {
                 final boolean skippedFirstPass = lp.width == 0 && lp.weight > 0;
                 final int measuredWidth = skippedFirstPass ? 0 : child.getMeasuredWidth();
                 if (canSlide && child != mSlideableView) {
-                    if (lp.width < 0 && (measuredWidth > fixedPanelWidthLimit || lp.weight > 0)) {
+                    if (lp.width < 0 && (measuredWidth > widthAvailable || lp.weight > 0)) {
                         // Fixed panels in a sliding configuration should
                         // be clamped to the fixed panel limit.
                         final int childHeightSpec;
@@ -466,7 +460,7 @@ public class ResideLayout extends ViewGroup {
                                     child.getMeasuredHeight(), MeasureSpec.EXACTLY);
                         }
                         final int childWidthSpec = MeasureSpec.makeMeasureSpec(
-                                fixedPanelWidthLimit, MeasureSpec.EXACTLY);
+                                widthAvailable, MeasureSpec.EXACTLY);
                         child.measure(childWidthSpec, childHeightSpec);
                     }
                 } else if (lp.weight > 0) {
@@ -563,7 +557,6 @@ public class ResideLayout extends ViewGroup {
             } else if (mCanSlide && mParallaxBy != 0) {
                 offset = (int) ((1 - mSlideOffset) * mParallaxBy);
                 xStart = nextXStart;
-                lp.dimWhenOffset = true;
             } else {
                 xStart = nextXStart;
             }
@@ -583,14 +576,6 @@ public class ResideLayout extends ViewGroup {
             if (mCanSlide) {
                 if (mParallaxBy != 0) {
                     parallaxOtherViews(mSlideOffset);
-                }
-                if (((LayoutParams) mSlideableView.getLayoutParams()).dimWhenOffset) {
-                    dimChildView(mSlideableView, mSlideOffset, mSliderFadeColor);
-                }
-            } else {
-                // Reset the dim level of all children; it's irrelevant when nothing moves.
-                for (int i = 0; i < childCount; i++) {
-                    dimChildView(getChildAt(i), 0, mSliderFadeColor);
                 }
             }
             updateObscuredViewsVisibility(mSlideableView);
@@ -663,7 +648,13 @@ public class ResideLayout extends ViewGroup {
                 final float adx = Math.abs(x - mInitialMotionX);
                 final float ady = Math.abs(y - mInitialMotionY);
                 final int slop = mDragHelper.getTouchSlop();
-                if (adx > slop && ady > adx) {
+
+                View view = findViewAtPosition(this, (int) x, (int) y);
+
+                if (adx > slop && ady > adx || view != null) {
+                    if(view != null) {
+                        Log.d(TAG, "touch on unscrollable view");
+                    }
                     mDragHelper.cancel();
                     mIsUnableToDrag = true;
                     return false;
@@ -674,6 +665,28 @@ public class ResideLayout extends ViewGroup {
         final boolean interceptForDrag = mDragHelper.shouldInterceptTouchEvent(ev);
 
         return interceptForDrag || interceptTap;
+    }
+
+    private View findViewAtPosition(View parent, int x, int y) {
+        if(parent instanceof ViewPager){
+            Rect rect = new Rect();
+            parent.getGlobalVisibleRect(rect);
+            if (rect.contains(x, y)) {
+                return parent;
+            }
+        }else if(parent instanceof ViewGroup){
+            ViewGroup viewGroup = (ViewGroup)parent;
+            final int length = viewGroup.getChildCount();
+            for (int i = 0; i < length; i++) {
+                View child = viewGroup.getChildAt(i);
+                View viewAtPosition = findViewAtPosition(child, x, y);
+                if (viewAtPosition != null) {
+                    return viewAtPosition;
+                }
+            }
+            return null;
+        }
+        return null;
     }
 
     @Override
@@ -766,9 +779,7 @@ public class ResideLayout extends ViewGroup {
 
         mSlideOffset = (float) (newLeft - startBound) / mSlideRange;
 
-//        if (mParallaxBy != 0) {
         parallaxOtherViews(mSlideOffset);
-//        }
 
         if (lp.dimWhenOffset) {
             dimChildView(mSlideableView, mSlideOffset, mSliderFadeColor);
@@ -809,37 +820,37 @@ public class ResideLayout extends ViewGroup {
 
         if (mCanSlide && !lp.slideable && mSlideableView != null) {
             // Clip against the slider; no sense drawing what will immediately be covered.
-            canvas.getClipBounds(mTmpRect);
-            mTmpRect.right = Math.min(mTmpRect.right, mSlideableView.getLeft());
-//            canvas.scale(0.2f * mSlideOffset + 0.8f, 0.2f * mSlideOffset + 0.8f, 0, getHeight()/2);
             canvas.scale(1.2f -  0.2f * mSlideOffset, 1.2f -  0.2f * mSlideOffset, child.getRight(), getHeight() / 2);
-//            canvas.clipRect(mTmpRect);
         } else {
             assert mSlideableView != null;
-            canvas.scale(1 - mSlideOffset / 3, 1 - mSlideOffset / 4, mSlideableView.getLeft(), getHeight() / 2);
-
+            canvas.scale(1 - mSlideOffset / 3, 1 - mSlideOffset / 3, mSlideableView.getLeft(), getHeight() / 2);
+            ViewCompat.setRotationY(child, -10 * mSlideOffset);
         }
 
-        if (Build.VERSION.SDK_INT >= 11) { // HC
-            result = super.drawChild(canvas, child, drawingTime);
-        } else {
-            if (lp.dimWhenOffset && mSlideOffset > 0) {
-                if (!child.isDrawingCacheEnabled()) {
-                    child.setDrawingCacheEnabled(true);
-                }
-                final Bitmap cache = child.getDrawingCache();
-                if (cache != null) {
-                    canvas.drawBitmap(cache, child.getLeft(), child.getTop(), lp.dimPaint);
-                    result = false;
+        if(!lp.slideable && mSlideOffset == 0) {
+            result = true;
+        }else {
+            if (Build.VERSION.SDK_INT >= 11) { // HC
+                result = super.drawChild(canvas, child, drawingTime);
+            } else {
+                if (lp.dimWhenOffset && mSlideOffset > 0) {
+                    if (!child.isDrawingCacheEnabled()) {
+                        child.setDrawingCacheEnabled(true);
+                    }
+                    final Bitmap cache = child.getDrawingCache();
+                    if (cache != null) {
+                        canvas.drawBitmap(cache, child.getLeft(), child.getTop(), lp.dimPaint);
+                        result = false;
+                    } else {
+                        Log.e(TAG, "drawChild: child view " + child + " returned null drawing cache");
+                        result = super.drawChild(canvas, child, drawingTime);
+                    }
                 } else {
-                    Log.e(TAG, "drawChild: child view " + child + " returned null drawing cache");
+                    if (child.isDrawingCacheEnabled()) {
+                        child.setDrawingCacheEnabled(false);
+                    }
                     result = super.drawChild(canvas, child, drawingTime);
                 }
-            } else {
-                if (child.isDrawingCacheEnabled()) {
-                    child.setDrawingCacheEnabled(false);
-                }
-                result = super.drawChild(canvas, child, drawingTime);
             }
         }
 
