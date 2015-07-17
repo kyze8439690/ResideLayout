@@ -1,13 +1,25 @@
-<me.yugy.github.residelayout.ResideLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        >
+<me.yugy.github.residelayout.ResideLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/reside_layout"
+    >
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:src="@drawable/stars"
-        android:scaleType="centerCrop"/>
+    <FrameLayout android:layout_width="match_parent"
+                 android:layout_height="match_parent">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/stars"
+            android:scaleType="centerCrop"/>
+
+        <ListView
+            android:id="@+id/menu"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+    </FrameLayout>
 
     <RelativeLayout
         android:layout_width="match_parent"
